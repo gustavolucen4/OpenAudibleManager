@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAudible Manager - Biblioteca Audible BR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --amber-main: #f59e0b;
+            --amber-hover: #d97706;
+            --emerald-accent: #10b981;
+            --blue-accent: #3b82f6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --glass-bg: rgba(15, 23, 42, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+        }
+
+        header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--amber-main), var(--amber-hover));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #000;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        }
+
+        .brand-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-sync {
+            background: linear-gradient(135deg, var(--amber-main), var(--amber-hover));
+            color: #000;
+            font-weight: 700;
+            font-size: 0.92rem;
+            padding: 10px 22px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .btn-sync:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-sync:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 9px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: #ef4444;
+            transform: translateY(-1px);
+        }
+
+        .container {
+            max-width: 1350px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 40px;
+            flex: 1;
+        }
+
+        .settings-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            backdrop-filter: blur(8px);
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .settings-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .settings-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--amber-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .settings-desc {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .settings-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            max-width: 680px;
+        }
+
+        .settings-input {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+        }
+
+        .settings-input:focus {
+            border-color: var(--amber-main);
+        }
+
+        .btn-browse {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--blue-accent);
+            border: 1px solid var(--blue-accent);
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-browse:hover {
+            background: var(--blue-accent);
+            color: #fff;
+        }
+
+        .btn-save-settings {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--amber-main);
+            border: 1px solid var(--amber-main);
+            font-weight: 700;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-save-settings:hover {
+            background: var(--amber-main);
+            color: #000;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 18px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            width: 320px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--amber-main);
+        }
+
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .book-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        .book-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(245, 158, 11, 0.3);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .book-cover-wrap {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            background: #0f172a;
+        }
+
+        .book-cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-details {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .book-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.35;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .book-author {
+            color: var(--amber-main);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .book-narrator {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 16px;
+        }
+
+        .book-footer {
+            margin-top: auto;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .progress-bar-wrap {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, var(--amber-main), var(--emerald-accent));
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .btn-download {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--amber-main);
+            background: transparent;
+            color: var(--amber-main);
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-download:hover {
+            background: var(--amber-main);
+            color: #000;
+        }
+
+        .btn-download.downloaded {
+            border-color: var(--emerald-accent);
+            color: var(--emerald-accent);
+            cursor: default;
+        }
+
+        .btn-download.downloaded:hover {
+            background: transparent;
+            color: var(--emerald-accent);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .path-info {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            word-break: break-all;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--amber-main);
+            color: var(--text-primary);
+            padding: 14px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: none;
+            backdrop-filter: blur(12px);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 650px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--amber-main);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .drives-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .drive-btn {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--blue-accent);
+            border: 1px solid var(--blue-accent);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .drive-btn:hover {
+            background: var(--blue-accent);
+            color: #fff;
+        }
+
+        .current-path-box {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            font-family: monospace;
+            color: #f1f5f9;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        .dir-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .dir-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.15s ease;
+        }
+
+        .dir-item:hover {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+            color: var(--amber-main);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-logo">🎧</div>
+            <div class="brand-title">OpenAudible Manager</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-sync" id="syncBtn" onclick="syncLibrary()">
+                <span id="syncIcon">🔄</span> Sincronizar Biblioteca
+            </button>
+            <a href="/auth/logout" class="btn-logout" title="Encerrar sessão e deslogar da conta">
+                🚪 Sair
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="settings-card">
+            <div class="settings-row">
+                <div class="settings-info">
+                    <div class="settings-title">📁 Pasta de Destino dos Downloads</div>
+                    <div class="settings-desc">Selecione onde os audiolivros .aax/.m4b serão salvos na sua máquina.</div>
+                </div>
+                <div class="settings-form">
+                    <input type="text" id="downloadDirInput" class="settings-input" placeholder="./data/audiobooks">
+                    <button class="btn-browse" onclick="openBrowseModal()">🔍 Procurar Pasta...</button>
+                    <button class="btn-save-settings" onclick="saveSettings()">Salvar Pasta</button>
+                </div>
+            </div>
+
+            <div class="settings-row" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px;">
+                <div class="settings-info">
+                    <div class="settings-title">🔑 Bytes de Ativação (Audiobookshelf / FFmpeg)</div>
+                    <div class="settings-desc">
+                        Insira seus 8 caracteres hexadecimais para conversão automática .aax ➔ .m4b sem DRM.
+                        <br><span style="color: #f59e0b; font-size: 0.78rem;">💡 Obtenha via <a href="https://openaudible.org" target="_blank" style="color: #f59e0b;">OpenAudible</a> → File → Advanced → Show Activation Bytes</span>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <input type="text" id="activationBytesInput" class="settings-input" placeholder="ex: 1a2b3c4d" style="max-width: 200px;">
+                    <button class="btn-save-settings" onclick="saveSettings()">Salvar Bytes</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total de Audiolivros</div>
+                <div class="stat-value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Baixados</div>
+                <div class="stat-value" id="statDownloaded" style="color: var(--emerald-accent);">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Em Download</div>
+                <div class="stat-value" id="statDownloading" style="color: var(--amber-main);">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Marketplace</div>
+                <div class="stat-value">Brasil (audible.com.br)</div>
+            </div>
+        </div>
+
+        <div class="controls-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por título, autor ou narrador..." oninput="filterBooks()">
+        </div>
+
+        <div class="books-grid" id="booksGrid">
+            <!-- Renderizado dinamicamente via JS -->
+        </div>
+    </div>
+
+    <!-- Modal do Buscador Interativo de Diretórios -->
+    <div class="modal-overlay" id="browseModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">📁 Selecionar Pasta no Sistema</div>
+                <button class="modal-close" onclick="closeBrowseModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="drives-bar" id="drivesBar"></div>
+                <div class="current-path-box" id="currentPathBox">Carregando...</div>
+                <div class="dir-list" id="dirList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-browse" style="border-color: #64748b; color: #94a3b8;" onclick="closeBrowseModal()">Cancelar</button>
+                <button class="btn-save-settings" onclick="selectCurrentModalPath()">✅ Selecionar Esta Pasta</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let allBooks = [];
+        let pollingTimer = null;
+        let activeModalPath = null;
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/audible/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('downloadDirInput').value = data.download_dir || '';
+                    document.getElementById('activationBytesInput').value = data.activation_bytes || '';
+                }
+            } catch (err) {
+                console.error("Erro ao carregar configurações:", err);
+            }
+        }
+
+
+
+        async function saveSettings() {
+            const dirPath = document.getElementById('downloadDirInput').value.trim();
+            const actBytes = document.getElementById('activationBytesInput').value.trim();
+
+            if (!dirPath) {
+                showToast("⚠️ Insira um caminho de pasta válido.");
+                return;
+            }
+            try {
+                const res = await fetch('/audible/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ download_dir: dirPath, activation_bytes: actBytes })
+                });
+                if (res.ok) {
+                    showToast("✅ Configurações salvas com sucesso!");
+                } else {
+                    const err = await res.json();
+                    showToast("❌ Erro ao salvar configurações: " + (err.detail || "Caminho inválido"));
+                }
+            } catch (err) {
+                showToast("❌ Erro de rede ao salvar configurações.");
+            }
+        }
+
+        async function openBrowseModal(path = '') {
+            document.getElementById('browseModal').style.display = 'flex';
+            loadBrowseDirs(path || document.getElementById('downloadDirInput').value);
+        }
+
+        function closeBrowseModal() {
+            document.getElementById('browseModal').style.display = 'none';
+        }
+
+        async function loadBrowseDirs(path = '') {
+            try {
+                const url = path ? `/audible/browse-dirs?path=${encodeURIComponent(path)}` : '/audible/browse-dirs';
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                activeModalPath = data.current_path;
+                document.getElementById('currentPathBox').innerText = data.current_path;
+
+                // Render drives
+                const drivesBar = document.getElementById('drivesBar');
+                drivesBar.innerHTML = data.drives.map(d => `
+                    <button class="drive-btn" onclick="loadBrowseDirs('${d.replace(/\\/g, '\\\\')}')">💾 ${d}</button>
+                `).join('');
+
+                // Render directory list
+                const dirList = document.getElementById('dirList');
+                let html = '';
+
+                if (data.parent_path) {
+                    html += `
+                        <div class="dir-item" style="color: var(--amber-main); font-weight: 700;" onclick="loadBrowseDirs('${data.parent_path.replace(/\\/g, '\\\\')}')">
+                            ⬆️ .. (Pasta Anterior)
+                        </div>
+                    `;
+                }
+
+                if (data.directories.length === 0) {
+                    html += `<div style="padding: 16px; color: var(--text-secondary); text-align: center;">Nenhuma subpasta encontrada nesta localização.</div>`;
+                } else {
+                    html += data.directories.map(d => `
+                        <div class="dir-item" onclick="loadBrowseDirs('${d.path.replace(/\\/g, '\\\\')}')">
+                            📁 ${d.name}
+                        </div>
+                    `).join('');
+                }
+
+                dirList.innerHTML = html;
+
+            } catch (err) {
+                console.error("Erro ao carregar diretórios:", err);
+            }
+        }
+
+        function selectCurrentModalPath() {
+            if (activeModalPath) {
+                document.getElementById('downloadDirInput').value = activeModalPath;
+                saveSettings();
+                closeBrowseModal();
+            }
+        }
+
+        async function fetchBooks() {
+            try {
+                const res = await fetch('/audible/books');
+                if (res.status === 401) {
+                    showToast("⚠️ Sessão expirada ou token antigo. Redirecionando para login...");
+                    setTimeout(() => { window.location.href = "/auth/login"; }, 1500);
+                    return;
+                }
+                if (!res.ok) return;
+                allBooks = await res.json();
+                renderBooks(allBooks);
+                updateStats(allBooks);
+
+                const isDownloading = allBooks.some(b => b.download_status === 'downloading');
+                // Manage polling: keep alive while any book is downloading
+                if (isDownloading) {
+                    if (!pollingTimer) {
+                        pollingTimer = setInterval(fetchBooks, 1000); // poll every 1s
+                    }
+                } else {
+                    if (pollingTimer) {
+                        clearInterval(pollingTimer);
+                        pollingTimer = null;
+                    }
+                }
+            } catch (err) {
+                console.error("Erro ao carregar livros:", err);
+            }
+        }
+
+        function updateStats(books) {
+            document.getElementById('statTotal').innerText = books.length;
+            document.getElementById('statDownloaded').innerText = books.filter(b => b.download_status === 'downloaded').length;
+            document.getElementById('statDownloading').innerText = books.filter(b => b.download_status === 'downloading').length;
+        }
+
+        function renderBooks(books) {
+            const grid = document.getElementById('booksGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            const filtered = books.filter(b => 
+                (b.title && b.title.toLowerCase().includes(search)) ||
+                (b.authors && b.authors.toLowerCase().includes(search)) ||
+                (b.narrators && b.narrators.toLowerCase().includes(search))
+            );
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+                        <h3>Nenhum audiolivro encontrado</h3>
+                        <p style="margin-top: 8px;">Clique em "Sincronizar Biblioteca" acima para buscar seus livros na Audible Brasil.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(b => {
+                const cover = b.cover_url || 'https://via.placeholder.com/300x300?text=Sem+Capa';
+                const isDownloading = b.download_status === 'downloading';
+                const isDownloaded  = b.download_status === 'downloaded';
+                const isError       = b.download_status === 'error';
+                const needsAct      = b.download_status === 'needs_activation';
+                const progress = b.download_progress || 0;
+
+                let actionBtn = `
+                    <button class="btn-download" onclick="startDownload('${b.asin}')">
+                        ⬇️ Baixar Audiolivro
+                    </button>
+                `;
+
+                if (isDownloading) {
+                    actionBtn = `
+                        <div class="status-badge">
+                            <span>Baixando em alta velocidade (10MB/s)...</span>
+                            <span style="color: var(--amber-main); font-weight:700;">${progress}%</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar-fill" style="width: ${progress}%;"></div>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:6px;">
+                            <button class="btn-download" disabled style="opacity:0.7; flex:1;">
+                                ⚡ Baixando (${progress}%)
+                            </button>
+                            <button class="btn-download" onclick="cancelDownload('${b.asin}')" style="background:rgba(239,68,68,0.15); color:#ef4444; border-color:rgba(239,68,68,0.4); flex:none; padding:8px 14px;" title="Cancelar Download">
+                                🚫 Cancelar
+                            </button>
+                        </div>
+                    `;
+                } else if (isDownloaded) {
+                    const localPath = b.local_path || 'Pasta local';
+                    const isM4b = localPath.toLowerCase().endsWith('.m4b');
+                    const formatTag = isM4b ? '✅ Baixado (.m4b - Audiobookshelf)' : '✅ Baixado (.aax)';
+                    actionBtn = `
+                        <button class="btn-download downloaded">
+                            ${formatTag}
+                        </button>
+                        <div class="path-info">📁 ${localPath}</div>
+                        <button class="btn-download" onclick="deleteDownload('${b.asin}')" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.3); margin-top:8px;" title="Excluir arquivo do disco">
+                            🗑️ Excluir Download
+                        </button>
+                    `;
+                } else if (needsAct) {
+                    const localPath = b.local_path || '';
+                    actionBtn = `
+                        <div style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.4); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;">
+                            <div style="color: #f59e0b; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px;">⚠️ Formato AAX Legado Detectado</div>
+                            <div style="color: var(--text-secondary); font-size: 0.78rem; line-height: 1.5;">
+                                Este livro usa DRM antigo (AAX). Configure os <strong style="color: #f59e0b;">Bytes de Ativação</strong> nas configurações acima e clique em Converter.
+                            </div>
+                        </div>
+                        <button class="btn-download" style="border-color: #f59e0b; color: #f59e0b;" onclick="convertBook('${b.asin}')">
+                            🔄 Converter para .m4b
+                        </button>
+                        ${localPath ? `<div class="path-info">📁 ${localPath}</div>` : ''}
+                    `;
+                } else if (isError) {
+                    actionBtn = `
+                        <button class="btn-download" style="border-color: #ef4444; color: #ef4444;" onclick="startDownload('${b.asin}')">
+                            ⚠️ Tentar Novamente
+                        </button>
+                    `;
+                }
+
+
+                return `
+                    <div class="book-card">
+                        <div class="book-cover-wrap">
+                            <img class="book-cover" src="${cover}" alt="${b.title}">
+                        </div>
+                        <div class="book-details">
+                            <div class="book-title">${b.title}</div>
+                            <div class="book-author">👤 ${b.authors}</div>
+                            <div class="book-narrator">🎙️ ${b.narrators}</div>
+                            <div class="book-footer">
+                                ${actionBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterBooks() {
+            renderBooks(allBooks);
+        }
+
+        async function startDownload(asin) {
+            try {
+                showToast("⚡ Iniciando download real na Audible BR (10MB/s)...");
+
+                // Optimistically update the UI immediately so the progress bar appears right away
+                const bookIdx = allBooks.findIndex(b => b.asin === asin);
+                if (bookIdx !== -1) {
+                    allBooks[bookIdx] = { ...allBooks[bookIdx], download_status: 'downloading', download_progress: 1 };
+                    renderBooks(allBooks);
+                    updateStats(allBooks);
+                }
+
+                // Start polling immediately so we catch progress updates
+                if (!pollingTimer) {
+                    pollingTimer = setInterval(fetchBooks, 1000);
+                }
+
+                const res = await fetch(`/audible/download/${asin}`, { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    showToast("❌ Erro ao iniciar download: " + (err.detail || "Erro desconhecido"));
+                    // Revert optimistic update on error
+                    fetchBooks();
+                }
+            } catch (err) {
+                showToast("❌ Erro de conexão ao iniciar download.");
+                fetchBooks();
+            }
+        }
+
+        async function cancelDownload(asin) {
+            try {
+                showToast("🚫 Cancelando download...");
+                const res = await fetch(`/audible/download/${asin}/cancel`, { method: 'POST' });
+                if (res.ok) {
+                    showToast("✅ Download cancelado com sucesso.");
+                    fetchBooks();
+                } else {
+                    showToast("❌ Erro ao cancelar download.");
+                }
+            } catch (err) {
+                showToast("❌ Erro de rede ao cancelar download.");
+            }
+        }
+
+        async function deleteDownload(asin) {
+            if (!confirm("Tem certeza que deseja excluir o arquivo baixado do disco?")) return;
+            try {
+                showToast("🗑️ Excluindo arquivo do disco...");
+                const res = await fetch(`/audible/download/${asin}/delete`, { method: 'POST' });
+                if (res.ok) {
+                    showToast("✅ Arquivo excluído do disco.");
+                    fetchBooks();
+                } else {
+                    showToast("❌ Erro ao excluir arquivo do disco.");
+                }
+            } catch (err) {
+                showToast("❌ Erro de rede ao excluir arquivo.");
+            }
+        }
+
+        async function convertBook(asin) {
+            try {
+                showToast("🔄 Iniciando conversão AAX → M4B...");
+                // Optimistic UI: show as downloading/converting
+                const bookIdx = allBooks.findIndex(b => b.asin === asin);
+                if (bookIdx !== -1) {
+                    allBooks[bookIdx] = { ...allBooks[bookIdx], download_status: 'downloading', download_progress: 99 };
+                    renderBooks(allBooks);
+                    updateStats(allBooks);
+                }
+                if (!pollingTimer) pollingTimer = setInterval(fetchBooks, 1000);
+
+                const res = await fetch(`/audible/convert/${asin}`, { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    showToast("❌ " + (err.detail || "Erro ao converter."));
+                    fetchBooks(); // Revert
+                }
+            } catch (err) {
+                showToast("❌ Erro de conexão ao converter.");
+                fetchBooks();
+            }
+        }
+
+        async function syncLibrary() {
+            const btn = document.getElementById('syncBtn');
+            const icon = document.getElementById('syncIcon');
+            btn.disabled = true;
+            icon.innerText = '⏳';
+            showToast("🔄 Sincronizando com a API da Audible Brasil...");
+
+            try {
+                const res = await fetch('/audible/sync', { method: 'POST' });
+                if (res.ok) {
+                    const stats = await res.json();
+                    showToast(`✅ Sincronização concluída! ${stats.added_count} adicionados, ${stats.total_books} total.`);
+                    fetchBooks();
+                } else {
+                    const err = await res.json();
+                    showToast("❌ Erro na sincronização: " + (err.detail || "Falha na autenticação"));
+                }
+            } catch (err) {
+                showToast("❌ Erro de rede ao sincronizar.");
+            } finally {
+                btn.disabled = false;
+                icon.innerText = '🔄';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        loadSettings();
+        fetchBooks();
+    </script>
+</body>
+</html>

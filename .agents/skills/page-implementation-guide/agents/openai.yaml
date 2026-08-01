@@ -1,0 +1,4 @@
+interface:
+  display_name: "Page Implementation Guide"
+  short_description: "Padroes de paginas do admin"
+  default_prompt: "Use $page-implementation-guide para criar uma nova pagina do admin seguindo o design system."

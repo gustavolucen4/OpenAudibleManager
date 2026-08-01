@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment & Secret files
+.env
+.env.local
+.env.*.local
+
+# SQLite Databases & Local Storage
+*.db
+*.sqlite
+*.sqlite3
+auth.db
+audible-auth-service/auth.db
+audible-auth-service/data/*
+!audible-auth-service/data/.gitkeep
+audible-auth-service/downloads/*
+!audible-auth-service/downloads/.gitkeep
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+
+# Operating System & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+
+# Project specific VS Code temporary files
+.vscode/launch.json

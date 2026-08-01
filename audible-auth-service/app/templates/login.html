@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAudible Manager - Autenticação Audible BR</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-amber: #f59e0b;
+            --accent-hover: #d97706;
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --border-color: #334155;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 36px;
+            max-width: 620px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .logo {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--accent-amber);
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+        .badge {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 24px;
+        }
+        .btn {
+            background-color: var(--accent-amber);
+            color: #000;
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 14px 28px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        .bookmarklet-box {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px dashed var(--accent-blue);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 24px;
+            text-align: left;
+        }
+        .bookmarklet-title {
+            font-weight: 700;
+            color: #93c5fd;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .bookmarklet-btn {
+            display: inline-block;
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: grab;
+            margin: 8px 0;
+            border: 1px solid #60a5fa;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+            user-select: none;
+        }
+        .bookmarklet-btn:active {
+            cursor: grabbing;
+        }
+        .bookmarklet-desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+        .alert-box {
+            margin-top: 24px;
+            text-align: left;
+            background-color: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--accent-amber);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.88rem;
+            color: #fef08a;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-top: 24px;
+            text-align: left;
+        }
+        .form-label {
+            font-size: 0.9rem;
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            padding-right: 95px;
+            border-radius: 8px;
+            border: 2px solid var(--accent-amber);
+            background: var(--bg-primary);
+            color: white;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        .form-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4);
+        }
+        .btn-inline-paste {
+            position: absolute;
+            right: 8px;
+            background-color: rgba(59, 130, 246, 0.25);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .btn-inline-paste:hover {
+            background-color: #2563eb;
+            color: #ffffff;
+            border-color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">OpenAudible Manager</div>
+        <div class="subtitle">Serviço de Autenticação para Audible Brasil</div>
+        <div class="badge">Marketplace: {{ marketplace|upper }} (audible.com.br / amazon.com.br)</div>
+        
+        <a href="{{ auth_url }}" class="btn" target="_blank">1. Iniciar Login com Amazon Brasil</a>
+
+        <!-- Opção Automática 1: Bookmarklet -->
+        <div class="bookmarklet-box">
+            <div class="bookmarklet-title">⚡ Método 1-Clique: Favorito do Navegador (Bookmarklet)</div>
+            <div class="bookmarklet-desc">
+                Arraste o botão azul abaixo para a sua <strong>barra de favoritos</strong> do navegador (Ctrl+Shift+B).<br>
+                Após fazer login na Amazon na nova aba, basta clicar no favorito <strong>⭐ Capturar Login Audible</strong> e a conexão será concluída sozinha!
+            </div>
+            <div style="text-align: center;">
+                <a href="javascript:(function(){var u=window.location.href;if(!u.includes('openid.oa2.authorization_code')){alert('⚠️ Esta ainda não é a página final de login da Amazon (falta openid.oa2.authorization_code na URL).');return;}var f=document.createElement('form');f.method='POST';f.action='{{ base_url }}auth/callback-manual';var i=document.createElement('input');i.type='hidden';i.name='response_url';i.value=u;f.appendChild(i);document.body.appendChild(f);f.submit();})();" 
+                   class="bookmarklet-btn" 
+                   title="Arraste este botão para a sua barra de favoritos do navegador" 
+                   onclick="if(event.target === this) { alert('💡 Dica: Arraste este botão azul para a sua barra de favoritos do navegador!\n\nQuando você concluir o login na Amazon, clique nele na sua barra de favoritos.'); return false; }">
+                   ⭐ Capturar Login Audible (Arraste para Favoritos)
+                </a>
+            </div>
+        </div>
+
+        <div class="alert-box">
+            <strong>⚠️ Entenda a mensagem "Página Não Encontrada / 404":</strong><br>
+            Quando você concluir o login na Amazon, a página final dirá <em>"Procurando alguma coisa? Desculpe-nos..."</em>. <br>
+            <strong>ISSO É 100% NORMAL!</strong> O código de autenticação está na sua barra de endereços (contendo <code>openid.oa2.authorization_code=...</code>).
+        </div>
+
+        <!-- Opção Manual com botão inline de colar -->
+        <form action="/auth/callback-manual" method="POST" id="auth-form" class="form-group">
+            <input type="hidden" name="session_id" value="{{ session_id }}">
+            <label class="form-label">2. Cole a URL final da barra do seu navegador aqui:</label>
+            
+            <div class="input-wrapper">
+                <input type="text" name="response_url" id="response_url" placeholder="https://www.amazon.com.br/ap/maplanding?openid.oa2.authorization_code=..." required class="form-input">
+                <button type="button" class="btn-inline-paste" onclick="pasteFromClipboard()" title="Colar URL da área de transferência">
+                    📋 Colar
+                </button>
+            </div>
+
+            <button type="submit" class="btn" style="padding: 14px 20px; font-size: 1rem;">Confirmar URL & Finalizar Autenticação</button>
+        </form>
+    </div>
+
+    <script>
+    async function pasteFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text || text.trim() === '') {
+                alert('A sua área de transferência está vazia. Copie a URL da barra do seu navegador na aba da Amazon e tente novamente.');
+                return;
+            }
+            const cleanText = text.trim();
+            const input = document.getElementById('response_url');
+            input.value = cleanText;
+            
+            if (!cleanText.includes('openid.oa2.authorization_code')) {
+                alert('⚠️ A URL que você colou não possui o parâmetro de autorização da Amazon (openid.oa2.authorization_code).\n\nCertifique-se de copiar a URL inteira da barra de endereços após fazer o login.');
+            }
+        } catch (err) {
+            alert('Não foi possível ler a área de transferência automaticamente por permissão do navegador.\n\nPor favor, use o atalho Ctrl+V para colar manualmente.');
+        }
+    }
+    </script>
+</body>
+</html>
