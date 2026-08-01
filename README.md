@@ -46,7 +46,7 @@ version: '3.8'
 
 services:
   openaudible-manager:
-    image: gustavolucen4/openaudible-manager:latest # ou construa localmente
+    image: ghcr.io/gustavolucen4/openaudiblemanager:latest
     container_name: openaudible-manager
     restart: unless-stopped
     ports:
