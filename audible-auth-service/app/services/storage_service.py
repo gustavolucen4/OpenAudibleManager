@@ -58,47 +58,48 @@ class StorageService:
     @staticmethod
     def browse_directories(path: Optional[str] = None) -> Dict[str, Any]:
         """Lists accessible system drives or subdirectories for folder picker UI."""
-        if not path or path.strip() in ("", "/", "\\"):
+        # Handle Windows root vs Linux root
+        if os.name == 'nt' and (not path or path.strip() in ("", "/")):
+            import string
             drives = []
-            if os.name == 'nt':
-                import string
-                for letter in string.ascii_uppercase:
-                    d_path = f"{letter}:\\"
-                    if os.path.exists(d_path):
-                        drives.append(d_path)
-            else:
-                drives = ["/"]
-
+            for letter in string.ascii_uppercase:
+                d_path = f"{letter}:\\"
+                if os.path.exists(d_path):
+                    drives.append(d_path)
             return {
-                "current_path": "",
+                "current_path": "Drives do Sistema",
                 "parent_path": "",
                 "is_root": True,
+                "quick_shortcuts": [{"name": f"💾 {d}", "path": d} for d in drives],
                 "drives": drives,
-                "directories": []
+                "directories": [{"name": f"Disco ({d})", "path": d} for d in drives]
             }
 
-        target_path = os.path.abspath(path.strip())
+        # Normalize target path
+        raw_path = (path or "/").strip()
+        try:
+            target_path = os.path.abspath(raw_path)
+        except Exception:
+            target_path = "/"
 
         if not os.path.exists(target_path) or not os.path.isdir(target_path):
-            return {
-                "error": f"Caminho não encontrado ou não é um diretório: {path}",
-                "current_path": path,
-                "directories": []
-            }
+            target_path = "C:\\" if os.name == 'nt' else "/"
 
-        parent_path = os.path.dirname(target_path)
-        if parent_path == target_path:
-            parent_path = ""
+        is_root = (target_path == "/" or (os.name == 'nt' and (target_path.endswith(":\\") or len(target_path) <= 3)))
+        parent_path = "" if is_root else os.path.dirname(target_path)
 
         directories = []
         try:
             with os.scandir(target_path) as entries:
                 for entry in entries:
-                    if entry.is_dir(follow_symlinks=False) and not entry.name.startswith('.'):
-                        directories.append({
-                            "name": entry.name,
-                            "path": entry.path
-                        })
+                    try:
+                        if entry.is_dir(follow_symlinks=True) and not entry.name.startswith('.'):
+                            directories.append({
+                                "name": entry.name,
+                                "path": entry.path
+                            })
+                    except (PermissionError, OSError):
+                        continue
 
             directories.sort(key=lambda x: x["name"].lower())
         except PermissionError:
@@ -106,6 +107,8 @@ class StorageService:
                 "error": "Acesso negado a este diretório.",
                 "current_path": target_path,
                 "parent_path": parent_path,
+                "quick_shortcuts": [],
+                "drives": [],
                 "directories": []
             }
         except Exception as e:
@@ -113,24 +116,30 @@ class StorageService:
                 "error": str(e),
                 "current_path": target_path,
                 "parent_path": parent_path,
+                "quick_shortcuts": [],
+                "drives": [],
                 "directories": []
             }
 
-        drives = []
+        quick_shortcuts = []
         if os.name == 'nt':
             import string
             for letter in string.ascii_uppercase:
                 d_path = f"{letter}:\\"
                 if os.path.exists(d_path):
-                    drives.append(d_path)
+                    quick_shortcuts.append({"name": f"💾 {d_path}", "path": d_path})
         else:
-            drives = ["/"]
+            quick_shortcuts.append({"name": "💾 / (Raiz)", "path": "/"})
+            for common_dir in ["/HD", "/SD", "/app/downloads", "/app/data", "/DATA", "/mnt", "/media"]:
+                if os.path.exists(common_dir) and os.path.isdir(common_dir):
+                    quick_shortcuts.append({"name": f"📁 {common_dir}", "path": common_dir})
 
         return {
             "current_path": target_path,
             "parent_path": parent_path,
-            "is_root": False,
-            "drives": drives,
+            "is_root": is_root,
+            "quick_shortcuts": quick_shortcuts,
+            "drives": [s["path"] for s in quick_shortcuts],
             "directories": directories
         }
 

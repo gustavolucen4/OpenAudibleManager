@@ -791,28 +791,46 @@
                 const data = await res.json();
 
                 activeModalPath = data.current_path;
-                document.getElementById('currentPathBox').innerText = data.current_path;
+                
+                // Render Breadcrumb Path Box
+                const pathBox = document.getElementById('currentPathBox');
+                if (data.current_path) {
+                    const parts = data.current_path.split(/[/\\]/).filter(Boolean);
+                    let accPath = '';
+                    let breadcrumbsHtml = `<span style="cursor:pointer; color:var(--amber-main); font-weight:700;" onclick="loadBrowseDirs('/')">💾 / (Raiz)</span>`;
+                    
+                    parts.forEach((part, idx) => {
+                        accPath += '/' + part;
+                        const targetP = accPath;
+                        breadcrumbsHtml += ` <span style="color:var(--text-secondary);">/</span> <span style="cursor:pointer; color:var(--text-primary);" onclick="loadBrowseDirs('${targetP.replace(/\\/g, '\\\\')}')">${part}</span>`;
+                    });
+                    pathBox.innerHTML = breadcrumbsHtml;
+                } else {
+                    pathBox.innerHTML = `💾 Raiz do Sistema`;
+                }
 
-                // Render drives
+                // Render Quick Shortcuts / Drives
                 const drivesBar = document.getElementById('drivesBar');
-                drivesBar.innerHTML = data.drives.map(d => `
-                    <button class="drive-btn" onclick="loadBrowseDirs('${d.replace(/\\/g, '\\\\')}')">💾 ${d}</button>
+                const shortcuts = data.quick_shortcuts || (data.drives || []).map(d => ({ name: `💾 ${d}`, path: d }));
+                
+                drivesBar.innerHTML = shortcuts.map(s => `
+                    <button class="drive-btn" onclick="loadBrowseDirs('${s.path.replace(/\\/g, '\\\\')}')">${s.name}</button>
                 `).join('');
 
-                // Render directory list
+                // Render Directory List
                 const dirList = document.getElementById('dirList');
                 let html = '';
 
-                if (data.parent_path) {
+                if (data.parent_path && !data.is_root) {
                     html += `
-                        <div class="dir-item" style="color: var(--amber-main); font-weight: 700;" onclick="loadBrowseDirs('${data.parent_path.replace(/\\/g, '\\\\')}')">
+                        <div class="dir-item" style="color: var(--amber-main); font-weight: 700; border-bottom: 1px dashed rgba(255,255,255,0.1);" onclick="loadBrowseDirs('${data.parent_path.replace(/\\/g, '\\\\')}')">
                             ⬆️ .. (Pasta Anterior)
                         </div>
                     `;
                 }
 
-                if (data.directories.length === 0) {
-                    html += `<div style="padding: 16px; color: var(--text-secondary); text-align: center;">Nenhuma subpasta encontrada nesta localização.</div>`;
+                if (!data.directories || data.directories.length === 0) {
+                    html += `<div style="padding: 24px; color: var(--text-secondary); text-align: center;">Nenhuma subpasta encontrada nesta localização.</div>`;
                 } else {
                     html += data.directories.map(d => `
                         <div class="dir-item" onclick="loadBrowseDirs('${d.path.replace(/\\/g, '\\\\')}')">
