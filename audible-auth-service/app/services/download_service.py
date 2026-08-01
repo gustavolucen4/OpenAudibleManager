@@ -13,8 +13,43 @@ class DownloadService:
     """Service responsible for audiobook file downloads, streaming, cancellation, decryption, and FFmpeg conversions."""
 
     @staticmethod
+    def _normalize_to_hex(val: Any) -> Optional[str]:
+        """
+        Normalize a key or IV value to lowercase hex string for FFmpeg.
+        The Audible voucher returns key/iv as BASE64 strings.
+        FFmpeg's -audible_key and -audible_iv flags REQUIRE HEX strings.
+        This function handles: base64 str, already-hex str, or raw bytes.
+        """
+        import base64 as _b64
+        if not val:
+            return None
+        if isinstance(val, bytes):
+            return val.hex()
+        if isinstance(val, str):
+            val_clean = val.strip()
+            # Check if already hex (only 0-9a-fA-F, even length, at least 16 chars)
+            if len(val_clean) >= 16 and len(val_clean) % 2 == 0:
+                try:
+                    int(val_clean, 16)
+                    return val_clean.lower()
+                except ValueError:
+                    pass
+            # Try base64 decode
+            try:
+                decoded = _b64.b64decode(val_clean + "==")  # pad for safety
+                if len(decoded) >= 8:
+                    return decoded.hex()
+            except Exception:
+                pass
+        return str(val)
+
+    @staticmethod
     def extract_aaxc_credentials(client: Any, license_info: Dict[str, Any]) -> Optional[Dict[str, str]]:
-        """Decrypts the AAXC license voucher using python-audible's decrypt_voucher_from_licenserequest."""
+        """
+        Decrypts the AAXC license voucher using python-audible's decrypt_voucher_from_licenserequest.
+        Returns {'key': '<hex>', 'iv': '<hex>'} for use with FFmpeg -audible_key / -audible_iv.
+        The voucher key/iv are BASE64-encoded — must be converted to HEX for FFmpeg.
+        """
         try:
             from audible.aescipher import decrypt_voucher_from_licenserequest
             raw_res = license_info.get("raw_response")
@@ -25,7 +60,7 @@ class DownloadService:
             content_license = raw_res.get("content_license", {})
             license_response_str = content_license.get("license_response", "")
             if not license_response_str:
-                print("AAXC: license_response field is empty, likely legacy AAX DRM")
+                print("AAXC: license_response field is empty — legacy AAX DRM (needs activation_bytes)")
                 return None
 
             auth = getattr(client, "auth", None)
@@ -48,19 +83,18 @@ class DownloadService:
                 }
 
             voucher = decrypt_voucher_from_licenserequest(auth, raw_res)
-            key = voucher.get("key")
-            iv = voucher.get("iv")
+            raw_key = voucher.get("key")
+            raw_iv = voucher.get("iv")
 
-            if isinstance(key, bytes):
-                key = key.hex()
-            if isinstance(iv, bytes):
-                iv = iv.hex()
+            # CRITICAL: voucher returns key/iv as BASE64. FFmpeg needs HEX.
+            key_hex = DownloadService._normalize_to_hex(raw_key)
+            iv_hex = DownloadService._normalize_to_hex(raw_iv)
 
-            if key and iv:
-                print(f"AAXC: Successfully extracted key/iv (key length={len(str(key))})")
-                return {"key": str(key), "iv": str(iv)}
+            if key_hex and iv_hex:
+                print(f"AAXC: key/iv extracted and converted to hex (key_len={len(key_hex)}, iv_len={len(iv_hex)})")
+                return {"key": key_hex, "iv": iv_hex}
             else:
-                print(f"AAXC: Voucher decrypted but key/iv missing: {list(voucher.keys())}")
+                print(f"AAXC: Voucher decrypted but key/iv normalization failed. raw_key={raw_key!r}, raw_iv={raw_iv!r}")
         except Exception as e:
             print(f"AAXC voucher decryption note: {e}")
 
@@ -274,55 +308,113 @@ class DownloadService:
 
     @classmethod
     async def execute_aax_conversion(cls, asin: str, db_factory: Any) -> None:
-        """Background task: converts an already-downloaded .aax to .m4b using activation_bytes."""
+        """
+        Background task: converts an already-downloaded .aax/.aaxc file to .m4b.
+        Strategy:
+          1. Re-fetch the license from Audible API to get AAXC key/iv (most books).
+          2. If AAXC fails, fall back to activation_bytes (legacy AAX DRM).
+        """
         db = db_factory()
         try:
             book = db.query(Book).filter(Book.asin == asin).first()
             if not book or not book.local_path or not os.path.exists(book.local_path):
-                return
-
-            conf = StorageService.get_configured_settings(db)
-            activation_bytes = conf["activation_bytes"]
-            if not activation_bytes:
+                print(f"execute_aax_conversion: book not found or file missing for {asin}")
                 return
 
             ffmpeg_bin = StorageService.find_ffmpeg()
             if not ffmpeg_bin:
+                print("execute_aax_conversion: ffmpeg not found")
                 return
 
             aax_path = book.local_path
-            m4b_path = aax_path.replace(".aax", ".m4b") if aax_path.lower().endswith(".aax") else aax_path + ".m4b"
+            m4b_path = aax_path.rsplit(".", 1)[0] + ".m4b"
             m4b_tmp_path = m4b_path + ".tmp"
 
             book.download_status = "downloading"
             book.download_progress = 99
             db.commit()
 
-            cmd = [
-                ffmpeg_bin, "-y",
-                "-activation_bytes", activation_bytes,
-                "-i", aax_path,
-                "-c", "copy",
-                m4b_tmp_path
-            ]
+            # --- Strategy 1: AAXC via fresh license (re-fetch key/iv from API) ---
+            aaxc_creds = None
+            try:
+                user = db.query(User).filter(User.id == book.user_id).first()
+                token_record = db.query(Token).filter(Token.user_id == user.id).first() if user else None
+                if user and token_record and token_record.access_token:
+                    client = AudibleAuthManager.get_client_from_encrypted_tokens(
+                        token_record=token_record, marketplace=user.marketplace
+                    )
+                    license_info = AudibleAuthManager.get_download_license(client, asin)
+                    aaxc_creds = cls.extract_aaxc_credentials(client, license_info)
+            except Exception as e:
+                print(f"execute_aax_conversion: Could not re-fetch AAXC license: {e}")
+
+            cmd = None
+            if aaxc_creds and aaxc_creds.get("key") and aaxc_creds.get("iv"):
+                cmd = [
+                    ffmpeg_bin, "-y",
+                    "-audible_key", aaxc_creds["key"],
+                    "-audible_iv",  aaxc_creds["iv"],
+                    "-i", aax_path,
+                    "-c", "copy",
+                    m4b_tmp_path
+                ]
+                print(f"execute_aax_conversion: Using AAXC key/iv for {asin}")
+
+            # --- Strategy 2: Activation bytes (legacy AAX DRM) ---
+            if not cmd:
+                conf = StorageService.get_configured_settings(db)
+                activation_bytes = conf.get("activation_bytes", "")
+                if not activation_bytes:
+                    # Try auto-fetch
+                    try:
+                        user = db.query(User).filter(User.id == book.user_id).first()
+                        token_record = db.query(Token).filter(Token.user_id == user.id).first() if user else None
+                        if user and token_record and token_record.access_token:
+                            client = AudibleAuthManager.get_client_from_encrypted_tokens(
+                                token_record=token_record, marketplace=user.marketplace
+                            )
+                            activation_bytes = cls.get_or_fetch_activation_bytes(db, client) or ""
+                    except Exception as e:
+                        print(f"execute_aax_conversion: Could not fetch activation_bytes: {e}")
+
+                if activation_bytes:
+                    cmd = [
+                        ffmpeg_bin, "-y",
+                        "-activation_bytes", activation_bytes.strip(),
+                        "-i", aax_path,
+                        "-c", "copy",
+                        m4b_tmp_path
+                    ]
+                    print(f"execute_aax_conversion: Using activation_bytes fallback for {asin}")
+
+            if not cmd:
+                print(f"execute_aax_conversion: No credentials available for {asin}")
+                book.download_status = "needs_activation"
+                book.download_progress = 100
+                db.commit()
+                return
+
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            await proc.communicate()
+            stdout, stderr = await proc.communicate()
 
             if proc.returncode == 0 and os.path.exists(m4b_tmp_path) and os.path.getsize(m4b_tmp_path) > 0:
                 if os.path.exists(m4b_path):
                     try: os.remove(m4b_path)
                     except Exception: pass
                 os.rename(m4b_tmp_path, m4b_path)
-                if os.path.exists(aax_path):
+                if os.path.exists(aax_path) and aax_path != m4b_path:
                     try: os.remove(aax_path)
                     except Exception: pass
                 book.local_path = os.path.abspath(m4b_path)
                 book.download_status = "downloaded"
+                print(f"execute_aax_conversion: Conversion succeeded for {asin}")
             else:
+                err_msg = stderr.decode("utf-8", "replace") if stderr else "Unknown error"
+                print(f"execute_aax_conversion: FFmpeg failed (code {proc.returncode}): {err_msg[:500]}")
                 if os.path.exists(m4b_tmp_path):
                     try: os.remove(m4b_tmp_path)
                     except Exception: pass
