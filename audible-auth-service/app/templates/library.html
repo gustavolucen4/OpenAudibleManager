@@ -925,9 +925,13 @@
                 `;
 
                 if (isDownloading) {
+                    const isConverting = progress >= 99;
+                    const badgeText = isConverting ? 'Convertendo para .m4b (FFmpeg)...' : 'Baixando em alta velocidade...';
+                    const indicatorText = isConverting ? '🔄 Convertendo para .m4b (99%)' : `⚡ Baixando (${progress}%)`;
+
                     actionBtn = `
                         <div class="status-badge">
-                            <span>Baixando em alta velocidade...</span>
+                            <span>${badgeText}</span>
                             <span style="color: var(--amber-main); font-weight:700;">${progress}%</span>
                         </div>
                         <div class="progress-bar-wrap">
@@ -935,9 +939,9 @@
                         </div>
                         <div class="downloading-controls">
                             <div class="status-indicator">
-                                ⚡ Baixando (${progress}%)
+                                ${indicatorText}
                             </div>
-                            <button class="btn-cancel" onclick="cancelDownload('${b.asin}')" title="Cancelar Download">
+                            <button class="btn-cancel" onclick="cancelDownload('${b.asin}')" title="Cancelar Processo">
                                 🚫 Cancelar
                             </button>
                         </div>

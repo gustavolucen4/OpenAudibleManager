@@ -53,6 +53,35 @@ class DownloadService:
 
         return None
 
+    @staticmethod
+    def get_or_fetch_activation_bytes(db: Session, client: Any) -> Optional[str]:
+        """Gets stored activation bytes or automatically fetches them from Audible API using client.auth."""
+        conf = StorageService.get_configured_settings(db)
+        act_bytes = conf.get("activation_bytes")
+        if act_bytes:
+            return act_bytes
+
+        try:
+            from audible.activation_bytes import get_activation_bytes
+            auth = getattr(client, "auth", None)
+            if auth:
+                fetched_bytes = get_activation_bytes(auth)
+                if fetched_bytes:
+                    act_str = str(fetched_bytes).strip()
+                    from app.models import Setting
+                    setting_bytes = db.query(Setting).filter(Setting.key == "activation_bytes").first()
+                    if not setting_bytes:
+                        setting_bytes = Setting(key="activation_bytes", value=act_str)
+                        db.add(setting_bytes)
+                    else:
+                        setting_bytes.value = act_str
+                    db.commit()
+                    return act_str
+        except Exception as e:
+            print(f"Auto-fetch activation_bytes note: {e}")
+
+        return None
+
     @classmethod
     async def execute_audiobook_download(cls, asin: str, db_factory: Any) -> None:
         """Background task executing real download, streaming progress, and conversion."""
@@ -106,7 +135,7 @@ class DownloadService:
                             bytes_downloaded += len(chunk)
 
                             if total_bytes > 0:
-                                calc_progress = min(99, max(1, int((bytes_downloaded / total_bytes) * 100)))
+                                calc_progress = min(98, max(1, int((bytes_downloaded / total_bytes) * 98)))
                                 if abs(calc_progress - book.download_progress) >= 1:
                                     db.refresh(book)
                                     if book.download_status != "downloading":
@@ -127,10 +156,17 @@ class DownloadService:
                     except Exception: pass
                 os.rename(part_file_path, aax_file_path)
 
+            # Keep status as 'downloading' with progress 99% during conversion phase
+            book.download_progress = 99
+            db.commit()
+
             ffmpeg_bin = StorageService.find_ffmpeg()
             final_saved_path = aax_file_path
             aaxc_creds = None
             conversion_success = False
+
+            if not activation_bytes and client:
+                activation_bytes = cls.get_or_fetch_activation_bytes(db, client)
 
             if ffmpeg_bin and os.path.exists(aax_file_path) and os.path.getsize(aax_file_path) > 0:
                 aaxc_creds = cls.extract_aaxc_credentials(client, license_info)
@@ -148,7 +184,7 @@ class DownloadService:
                     elif activation_bytes:
                         cmd = [
                             ffmpeg_bin, "-y",
-                            "-activation_bytes", activation_bytes,
+                            "-activation_bytes", str(activation_bytes).strip(),
                             "-i", aax_file_path,
                             "-c", "copy",
                             m4b_tmp_path
@@ -192,6 +228,7 @@ class DownloadService:
                 and aaxc_creds is None
             )
 
+            # ONLY NOW (after download AND conversion are done) update status to completed!
             book.download_status = "needs_activation" if is_legacy_aax_unconverted else "downloaded"
             book.download_progress = 100
             book.local_path = os.path.abspath(final_saved_path)

@@ -98,7 +98,9 @@ def test_auto_discovery_of_existing_file(tmp_path):
         s.value = str(tmp_path)
     db.commit()
 
-    dummy_file = tmp_path / "Livro Existente no Disco.m4b"
+    dummy_dir = tmp_path / "Autor Desconhecido" / "Livro Existente no Disco"
+    dummy_dir.mkdir(parents=True, exist_ok=True)
+    dummy_file = dummy_dir / "Livro Existente no Disco.m4b"
     dummy_file.write_text("fake m4b audio content")
 
     from app.services.library_service import LibraryService
