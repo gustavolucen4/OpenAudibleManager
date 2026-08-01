@@ -421,6 +421,59 @@
             color: var(--emerald-accent);
         }
 
+        .downloading-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--amber-main);
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            flex: 1;
+            box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-cancel {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            height: 36px;
+            box-sizing: border-box;
+        }
+
+        .btn-cancel:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ffffff;
+            border-color: #ef4444;
+            transform: translateY(-1px);
+        }
+
         .status-badge {
             display: flex;
             align-items: center;
@@ -856,17 +909,17 @@
                 if (isDownloading) {
                     actionBtn = `
                         <div class="status-badge">
-                            <span>Baixando em alta velocidade (10MB/s)...</span>
+                            <span>Baixando em alta velocidade...</span>
                             <span style="color: var(--amber-main); font-weight:700;">${progress}%</span>
                         </div>
                         <div class="progress-bar-wrap">
                             <div class="progress-bar-fill" style="width: ${progress}%;"></div>
                         </div>
-                        <div style="display:flex; gap:8px; margin-top:6px;">
-                            <button class="btn-download" disabled style="opacity:0.7; flex:1;">
+                        <div class="downloading-controls">
+                            <div class="status-indicator">
                                 ⚡ Baixando (${progress}%)
-                            </button>
-                            <button class="btn-download" onclick="cancelDownload('${b.asin}')" style="background:rgba(239,68,68,0.15); color:#ef4444; border-color:rgba(239,68,68,0.4); flex:none; padding:8px 14px;" title="Cancelar Download">
+                            </div>
+                            <button class="btn-cancel" onclick="cancelDownload('${b.asin}')" title="Cancelar Download">
                                 🚫 Cancelar
                             </button>
                         </div>
