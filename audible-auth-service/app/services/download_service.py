@@ -40,8 +40,14 @@ class DownloadService:
             voucher = decrypt_voucher_from_licenserequest(auth, raw_res)
             key = voucher.get("key")
             iv = voucher.get("iv")
+
+            if isinstance(key, bytes):
+                key = key.hex()
+            if isinstance(iv, bytes):
+                iv = iv.hex()
+
             if key and iv:
-                return {"key": key, "iv": iv}
+                return {"key": str(key), "iv": str(iv)}
         except Exception as e:
             print(f"AAXC voucher decryption note: {e}")
 
@@ -124,18 +130,20 @@ class DownloadService:
             ffmpeg_bin = StorageService.find_ffmpeg()
             final_saved_path = aax_file_path
             aaxc_creds = None
+            conversion_success = False
 
-            if ffmpeg_bin:
+            if ffmpeg_bin and os.path.exists(aax_file_path) and os.path.getsize(aax_file_path) > 0:
                 aaxc_creds = cls.extract_aaxc_credentials(client, license_info)
+                m4b_tmp_path = m4b_file_path + ".tmp"
                 try:
-                    if aaxc_creds:
+                    if aaxc_creds and aaxc_creds.get("key") and aaxc_creds.get("iv"):
                         cmd = [
                             ffmpeg_bin, "-y",
-                            "-audible_key", aaxc_creds["key"],
-                            "-audible_iv",  aaxc_creds["iv"],
+                            "-audible_key", str(aaxc_creds["key"]),
+                            "-audible_iv",  str(aaxc_creds["iv"]),
                             "-i", aax_file_path,
                             "-c", "copy",
-                            m4b_file_path
+                            m4b_tmp_path
                         ]
                     elif activation_bytes:
                         cmd = [
@@ -143,7 +151,7 @@ class DownloadService:
                             "-activation_bytes", activation_bytes,
                             "-i", aax_file_path,
                             "-c", "copy",
-                            m4b_file_path
+                            m4b_tmp_path
                         ]
                     else:
                         cmd = None
@@ -154,18 +162,34 @@ class DownloadService:
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.PIPE
                         )
-                        await proc.communicate()
-                        if proc.returncode == 0 and os.path.exists(m4b_file_path) and os.path.getsize(m4b_file_path) > 0:
-                            os.remove(aax_file_path)
+                        stdout, stderr = await proc.communicate()
+                        if proc.returncode == 0 and os.path.exists(m4b_tmp_path) and os.path.getsize(m4b_tmp_path) > 0:
+                            if os.path.exists(m4b_file_path):
+                                try: os.remove(m4b_file_path)
+                                except Exception: pass
+                            os.rename(m4b_tmp_path, m4b_file_path)
+                            if os.path.exists(aax_file_path):
+                                try: os.remove(aax_file_path)
+                                except Exception: pass
                             final_saved_path = m4b_file_path
-                except Exception:
-                    pass
+                            conversion_success = True
+                        else:
+                            err_msg = stderr.decode('utf-8', 'replace') if stderr else 'Unknown error'
+                            print(f"FFmpeg conversion note (code {proc.returncode}): {err_msg}")
+                            if os.path.exists(m4b_tmp_path):
+                                try: os.remove(m4b_tmp_path)
+                                except Exception: pass
+                except Exception as ex:
+                    print(f"FFmpeg conversion exception: {ex}")
+                    if os.path.exists(m4b_tmp_path):
+                        try: os.remove(m4b_tmp_path)
+                        except Exception: pass
 
             is_legacy_aax_unconverted = (
-                final_saved_path == aax_file_path
-                and aaxc_creds is None
+                not conversion_success
+                and final_saved_path == aax_file_path
                 and not activation_bytes
-                and ffmpeg_bin is not None
+                and aaxc_creds is None
             )
 
             book.download_status = "needs_activation" if is_legacy_aax_unconverted else "downloaded"
@@ -205,6 +229,7 @@ class DownloadService:
 
             aax_path = book.local_path
             m4b_path = aax_path.replace(".aax", ".m4b") if aax_path.lower().endswith(".aax") else aax_path + ".m4b"
+            m4b_tmp_path = m4b_path + ".tmp"
 
             book.download_status = "downloading"
             book.download_progress = 99
@@ -215,7 +240,7 @@ class DownloadService:
                 "-activation_bytes", activation_bytes,
                 "-i", aax_path,
                 "-c", "copy",
-                m4b_path
+                m4b_tmp_path
             ]
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -224,17 +249,26 @@ class DownloadService:
             )
             await proc.communicate()
 
-            if proc.returncode == 0 and os.path.exists(m4b_path) and os.path.getsize(m4b_path) > 0:
-                os.remove(aax_path)
+            if proc.returncode == 0 and os.path.exists(m4b_tmp_path) and os.path.getsize(m4b_tmp_path) > 0:
+                if os.path.exists(m4b_path):
+                    try: os.remove(m4b_path)
+                    except Exception: pass
+                os.rename(m4b_tmp_path, m4b_path)
+                if os.path.exists(aax_path):
+                    try: os.remove(aax_path)
+                    except Exception: pass
                 book.local_path = os.path.abspath(m4b_path)
                 book.download_status = "downloaded"
             else:
+                if os.path.exists(m4b_tmp_path):
+                    try: os.remove(m4b_tmp_path)
+                    except Exception: pass
                 book.download_status = "needs_activation"
 
             book.download_progress = 100
             db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error in execute_aax_conversion: {e}")
         finally:
             db.close()
 

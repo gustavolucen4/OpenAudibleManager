@@ -58,10 +58,15 @@ class LibraryService:
                 if book.local_path.lower().endswith(".aax"):
                     m4b_path = book.local_path[:-4] + ".m4b"
                     if os.path.exists(m4b_path):
-                        book.local_path = os.path.abspath(m4b_path)
-                        book.download_status = "downloaded"
-                        updated = True
-                        continue
+                        if os.path.getsize(m4b_path) > 0:
+                            book.local_path = os.path.abspath(m4b_path)
+                            book.download_status = "downloaded"
+                            updated = True
+                            continue
+                        else:
+                            # Clean up empty 0-byte broken file
+                            try: os.remove(m4b_path)
+                            except Exception: pass
 
                 book.download_status = "downloaded"
                 continue
