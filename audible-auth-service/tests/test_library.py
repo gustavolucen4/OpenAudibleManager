@@ -73,14 +73,15 @@ def test_book_model_persistence():
 
 def test_auto_discovery_of_existing_file(tmp_path):
     import os, uuid
+    from app.models import Setting
     db = SessionLocal()
+
     unique_email = f"user_{uuid.uuid4().hex[:8]}@audible.com.br"
     user = User(email=unique_email, marketplace="br")
     db.add(user)
     db.commit()
 
-    from app.models import Setting
-    # Save original download_dir
+    # Save original download_dir — ALWAYS restore via finally
     s_orig = db.query(Setting).filter(Setting.key == "download_dir").first()
     orig_dir_value = s_orig.value if s_orig else None
 
@@ -101,24 +102,30 @@ def test_auto_discovery_of_existing_file(tmp_path):
         s_orig.value = str(tmp_path)
     db.commit()
 
-    dummy_dir = tmp_path / "Autor Desconhecido" / "Livro Existente no Disco"
-    dummy_dir.mkdir(parents=True, exist_ok=True)
-    dummy_file = dummy_dir / "Livro Existente no Disco.m4b"
-    dummy_file.write_text("fake m4b audio content")
+    try:
+        dummy_dir = tmp_path / "Autor Desconhecido" / "Livro Existente no Disco"
+        dummy_dir.mkdir(parents=True, exist_ok=True)
+        dummy_file = dummy_dir / "Livro Existente no Disco.m4b"
+        dummy_file.write_text("fake m4b audio content")
 
-    from app.services.library_service import LibraryService
-    srv = LibraryService(db)
-    srv.sync_local_disk_status()
+        from app.services.library_service import LibraryService
+        srv = LibraryService(db)
+        srv.sync_local_disk_status()
 
-    updated_book = db.query(Book).filter(Book.asin == test_asin).first()
-    assert updated_book is not None
-    assert updated_book.download_status == "downloaded"
-    assert os.path.normcase(updated_book.local_path) == os.path.normcase(str(dummy_file))
+        updated_book = db.query(Book).filter(Book.asin == test_asin).first()
+        assert updated_book is not None
+        assert updated_book.download_status == "downloaded"
+        assert os.path.normcase(updated_book.local_path) == os.path.normcase(str(dummy_file))
+    finally:
+        # ALWAYS restore — even if the assertions above fail
+        fetched_book = db.query(Book).filter(Book.asin == test_asin).first()
+        if fetched_book:
+            db.delete(fetched_book)
+        db.delete(user)
+        if orig_dir_value is not None:
+            s_orig.value = orig_dir_value
+        elif s_orig:
+            db.delete(s_orig)
+        db.commit()
+        db.close()
 
-    db.delete(updated_book)
-    db.delete(user)
-    # Restore original download_dir
-    if orig_dir_value is not None:
-        s_orig.value = orig_dir_value
-    db.commit()
-    db.close()

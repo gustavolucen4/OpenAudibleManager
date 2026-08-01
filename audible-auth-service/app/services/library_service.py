@@ -17,17 +17,14 @@ class LibraryService:
         Scans the currently configured download directory and matches existing audio files (.m4b, .aax, .aaxc)
         against stored books by ASIN, Title, and Author folder structure.
         """
-        user = self.db.query(User).first()
-        if not user:
-            return
-
         from app.services.storage_service import StorageService
         conf = StorageService.get_configured_settings(self.db)
         base_dir = conf.get("download_dir")
         if not base_dir or not os.path.exists(base_dir):
             return
 
-        books = self.db.query(Book).filter(Book.user_id == user.id).all()
+        # Scan ALL books from ALL users (multi-user safe)
+        books = self.db.query(Book).all()
         if not books:
             return
 
