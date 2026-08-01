@@ -226,6 +226,7 @@ class DownloadService:
                             "-audible_iv",  str(aaxc_creds["iv"]),
                             "-i", aax_file_path,
                             "-c", "copy",
+                            "-f", "mp4",
                             m4b_tmp_path
                         ]
                     elif activation_bytes:
@@ -234,6 +235,7 @@ class DownloadService:
                             "-activation_bytes", str(activation_bytes).strip(),
                             "-i", aax_file_path,
                             "-c", "copy",
+                            "-f", "mp4",
                             m4b_tmp_path
                         ]
                     else:
@@ -356,6 +358,7 @@ class DownloadService:
                     "-audible_iv",  aaxc_creds["iv"],
                     "-i", aax_path,
                     "-c", "copy",
+                    "-f", "mp4",
                     m4b_tmp_path
                 ]
                 print(f"execute_aax_conversion: Using AAXC key/iv for {asin}")
@@ -383,6 +386,7 @@ class DownloadService:
                         "-activation_bytes", activation_bytes.strip(),
                         "-i", aax_path,
                         "-c", "copy",
+                        "-f", "mp4",
                         m4b_tmp_path
                     ]
                     print(f"execute_aax_conversion: Using activation_bytes fallback for {asin}")
