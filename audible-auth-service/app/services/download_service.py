@@ -81,6 +81,7 @@ class DownloadService:
             os.makedirs(output_dir, exist_ok=True)
 
             aax_file_path = os.path.join(output_dir, f"{clean_title}.aax")
+            part_file_path = os.path.join(output_dir, f"{clean_title}.aax.part")
             m4b_file_path = os.path.join(output_dir, f"{clean_title}.m4b")
 
             headers = {
@@ -93,7 +94,7 @@ class DownloadService:
                     total_bytes = int(response.headers.get("content-length", 0))
                     bytes_downloaded = 0
 
-                    with open(aax_file_path, "wb") as f:
+                    with open(part_file_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=1048576):
                             f.write(chunk)
                             bytes_downloaded += len(chunk)
@@ -109,10 +110,16 @@ class DownloadService:
 
             db.refresh(book)
             if book.download_status != "downloading":
+                if os.path.exists(part_file_path):
+                    try: os.remove(part_file_path)
+                    except Exception: pass
+                return
+
+            if os.path.exists(part_file_path):
                 if os.path.exists(aax_file_path):
                     try: os.remove(aax_file_path)
                     except Exception: pass
-                return
+                os.rename(part_file_path, aax_file_path)
 
             ffmpeg_bin = StorageService.find_ffmpeg()
             final_saved_path = aax_file_path

@@ -35,15 +35,23 @@ class LibraryService:
 
         # Build lookup set of existing audio files in base_dir
         existing_files = set()
+        existing_norm_files = {}
         try:
             for root, _, files in os.walk(base_dir):
                 for f in files:
                     if f.lower().endswith(('.m4b', '.aax', '.aaxc', '.mp3')):
-                        existing_files.add(os.path.abspath(os.path.join(root, f)))
+                        abs_p = os.path.abspath(os.path.join(root, f))
+                        norm_p = os.path.normcase(abs_p)
+                        existing_files.add(abs_p)
+                        existing_norm_files[norm_p] = abs_p
         except Exception:
             pass
 
         for book in books:
+            # 0. Do NOT modify status for books currently downloading
+            if book.download_status == "downloading":
+                continue
+
             # 1. Check if current local_path exists on disk
             if book.local_path and os.path.exists(book.local_path):
                 # If file is .aax but converted .m4b exists, upgrade to .m4b
@@ -77,8 +85,9 @@ class LibraryService:
             found_file = None
             for cp in candidate_paths:
                 abs_cp = os.path.abspath(cp)
-                if abs_cp in existing_files or os.path.exists(abs_cp):
-                    found_file = abs_cp
+                norm_cp = os.path.normcase(abs_cp)
+                if abs_cp in existing_files or norm_cp in existing_norm_files or os.path.exists(abs_cp):
+                    found_file = existing_norm_files.get(norm_cp, abs_cp)
                     break
 
             # 3. Fuzzy search in existing_files
