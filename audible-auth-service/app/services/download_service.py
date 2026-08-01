@@ -139,8 +139,15 @@ class DownloadService:
                 return
 
             user = db.query(User).filter(User.id == book.user_id).first()
+            if not user:
+                user = db.query(User).first()
+                if user:
+                    book.user_id = user.id
+                    db.commit()
+
             token_record = db.query(Token).filter(Token.user_id == user.id).first() if user else None
             if not user or not token_record or not token_record.access_token:
+                print(f"Download error: User or token missing for book {asin}")
                 book.download_status = "error"
                 db.commit()
                 return
@@ -299,6 +306,9 @@ class DownloadService:
             db.commit()
 
         except Exception as e:
+            import traceback
+            print(f"EXCEPTION IN EXECUTE_AUDIOBOOK_DOWNLOAD: {e}")
+            traceback.print_exc()
             try:
                 db.rollback()
                 book = db.query(Book).filter(Book.asin == asin).first()

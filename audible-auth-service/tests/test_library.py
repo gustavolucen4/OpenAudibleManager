@@ -12,6 +12,7 @@ client = TestClient(app)
 
 
 def test_library_ui_endpoint():
+    from app.database import SessionLocal
     db = SessionLocal()
     user = User(email="ui_test@audible.com.br", marketplace="br")
     db.add(user)
@@ -42,6 +43,7 @@ def test_stored_books_empty():
 
 def test_book_model_persistence():
     import uuid
+    from app.database import SessionLocal
     db = SessionLocal()
     unique_email = f"user_{uuid.uuid4().hex[:8]}@audible.com.br"
     user = User(email=unique_email, marketplace="br")
@@ -74,6 +76,7 @@ def test_book_model_persistence():
 def test_auto_discovery_of_existing_file(tmp_path):
     import os, uuid
     from app.models import Setting
+    from app.database import SessionLocal
     db = SessionLocal()
 
     unique_email = f"user_{uuid.uuid4().hex[:8]}@audible.com.br"
