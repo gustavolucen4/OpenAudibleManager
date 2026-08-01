@@ -79,6 +79,11 @@ def test_auto_discovery_of_existing_file(tmp_path):
     db.add(user)
     db.commit()
 
+    from app.models import Setting
+    # Save original download_dir
+    s_orig = db.query(Setting).filter(Setting.key == "download_dir").first()
+    orig_dir_value = s_orig.value if s_orig else None
+
     test_asin = f"B09{uuid.uuid4().hex[:6]}"
     book = Book(
         asin=test_asin,
@@ -89,13 +94,11 @@ def test_auto_discovery_of_existing_file(tmp_path):
     )
     db.add(book)
 
-    from app.models import Setting
-    s = db.query(Setting).filter(Setting.key == "download_dir").first()
-    if not s:
-        s = Setting(key="download_dir", value=str(tmp_path))
-        db.add(s)
+    if not s_orig:
+        s_orig = Setting(key="download_dir", value=str(tmp_path))
+        db.add(s_orig)
     else:
-        s.value = str(tmp_path)
+        s_orig.value = str(tmp_path)
     db.commit()
 
     dummy_dir = tmp_path / "Autor Desconhecido" / "Livro Existente no Disco"
@@ -110,9 +113,12 @@ def test_auto_discovery_of_existing_file(tmp_path):
     updated_book = db.query(Book).filter(Book.asin == test_asin).first()
     assert updated_book is not None
     assert updated_book.download_status == "downloaded"
-    assert updated_book.local_path == str(dummy_file)
+    assert os.path.normcase(updated_book.local_path) == os.path.normcase(str(dummy_file))
 
     db.delete(updated_book)
     db.delete(user)
+    # Restore original download_dir
+    if orig_dir_value is not None:
+        s_orig.value = orig_dir_value
     db.commit()
     db.close()

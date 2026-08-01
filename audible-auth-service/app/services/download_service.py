@@ -19,16 +19,26 @@ class DownloadService:
             from audible.aescipher import decrypt_voucher_from_licenserequest
             raw_res = license_info.get("raw_response")
             if not raw_res:
+                print("AAXC: No raw_response in license_info")
+                return None
+
+            content_license = raw_res.get("content_license", {})
+            license_response_str = content_license.get("license_response", "")
+            if not license_response_str:
+                print("AAXC: license_response field is empty, likely legacy AAX DRM")
                 return None
 
             auth = getattr(client, "auth", None)
             if not auth:
+                print("AAXC: No auth on client")
                 return None
 
             if not getattr(auth, "customer_info", None):
-                allowed_users = raw_res.get("content_license", {}).get("allowed_users", [])
+                allowed_users = content_license.get("allowed_users", [])
                 if allowed_users:
                     auth.customer_info = {"user_id": allowed_users[0]}
+                else:
+                    print("AAXC: customer_info missing and no allowed_users found")
 
             if not getattr(auth, "device_info", None):
                 auth.device_info = {
@@ -47,7 +57,10 @@ class DownloadService:
                 iv = iv.hex()
 
             if key and iv:
+                print(f"AAXC: Successfully extracted key/iv (key length={len(str(key))})")
                 return {"key": str(key), "iv": str(iv)}
+            else:
+                print(f"AAXC: Voucher decrypted but key/iv missing: {list(voucher.keys())}")
         except Exception as e:
             print(f"AAXC voucher decryption note: {e}")
 
@@ -221,15 +234,28 @@ class DownloadService:
                         try: os.remove(m4b_tmp_path)
                         except Exception: pass
 
-            is_legacy_aax_unconverted = (
-                not conversion_success
-                and final_saved_path == aax_file_path
-                and not activation_bytes
-                and aaxc_creds is None
+            had_conversion_attempt = bool(
+                ffmpeg_bin
+                and os.path.exists(aax_file_path)
+                and (aaxc_creds or activation_bytes)
             )
 
+            # Determine final status:
+            # - converted successfully → downloaded (m4b)
+            # - no ffmpeg → downloaded (aax, can't convert)
+            # - had credentials but conversion failed → needs_activation
+            # - no credentials at all → needs_activation
+            if conversion_success:
+                final_status = "downloaded"
+            elif not ffmpeg_bin:
+                # Can't convert without ffmpeg, save .aax as is
+                final_status = "downloaded"
+            else:
+                # ffmpeg available but conversion failed (bad key, wrong bytes, etc.)
+                final_status = "needs_activation"
+
             # ONLY NOW (after download AND conversion are done) update status to completed!
-            book.download_status = "needs_activation" if is_legacy_aax_unconverted else "downloaded"
+            book.download_status = final_status
             book.download_progress = 100
             book.local_path = os.path.abspath(final_saved_path)
             db.commit()
