@@ -69,3 +69,48 @@ def test_book_model_persistence():
     db.delete(user)
     db.commit()
     db.close()
+
+
+def test_auto_discovery_of_existing_file(tmp_path):
+    import os, uuid
+    db = SessionLocal()
+    unique_email = f"user_{uuid.uuid4().hex[:8]}@audible.com.br"
+    user = User(email=unique_email, marketplace="br")
+    db.add(user)
+    db.commit()
+
+    test_asin = f"B09{uuid.uuid4().hex[:6]}"
+    book = Book(
+        asin=test_asin,
+        title="Livro Existente no Disco",
+        authors="Autor Desconhecido",
+        download_status="not_downloaded",
+        user_id=user.id
+    )
+    db.add(book)
+
+    from app.models import Setting
+    s = db.query(Setting).filter(Setting.key == "download_dir").first()
+    if not s:
+        s = Setting(key="download_dir", value=str(tmp_path))
+        db.add(s)
+    else:
+        s.value = str(tmp_path)
+    db.commit()
+
+    dummy_file = tmp_path / "Livro Existente no Disco.m4b"
+    dummy_file.write_text("fake m4b audio content")
+
+    from app.services.library_service import LibraryService
+    srv = LibraryService(db)
+    srv.sync_local_disk_status()
+
+    updated_book = db.query(Book).filter(Book.asin == test_asin).first()
+    assert updated_book is not None
+    assert updated_book.download_status == "downloaded"
+    assert updated_book.local_path == str(dummy_file)
+
+    db.delete(updated_book)
+    db.delete(user)
+    db.commit()
+    db.close()

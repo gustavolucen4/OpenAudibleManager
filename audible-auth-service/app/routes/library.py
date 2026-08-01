@@ -96,6 +96,13 @@ def update_settings(payload: SettingsSchema, db: Session = Depends(get_db)):
         setting_bytes.value = raw_bytes
 
     db.commit()
+
+    # Automatically scan newly selected directory for already downloaded audiobooks
+    try:
+        LibraryService(db).sync_local_disk_status()
+    except Exception:
+        pass
+
     return SettingsSchema(
         download_dir=norm_dir,
         activation_bytes=raw_bytes
