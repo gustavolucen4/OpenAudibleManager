@@ -185,13 +185,15 @@ class DownloadService:
                                 calc_progress = min(98, max(1, int((bytes_downloaded / total_bytes) * 98)))
                                 if abs(calc_progress - book.download_progress) >= 1:
                                     db.refresh(book)
-                                    if book.download_status != "downloading":
+                                    if book.download_status in ("not_downloaded", "cancelled"):
+                                        print(f"Download of {asin} was cancelled by user.")
                                         break
+                                    book.download_status = "downloading"
                                     book.download_progress = calc_progress
                                     db.commit()
 
             db.refresh(book)
-            if book.download_status != "downloading":
+            if book.download_status in ("not_downloaded", "cancelled"):
                 if os.path.exists(part_file_path):
                     try: os.remove(part_file_path)
                     except Exception: pass
