@@ -52,6 +52,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    favicon_path = os.path.join(static_dir, "favicon.png")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/png")
+    return HTMLResponse(content="", status_code=404)
+
+
 # Include Routers
 app.include_router(auth.router)
 app.include_router(library.router)
