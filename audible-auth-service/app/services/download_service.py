@@ -1,4 +1,5 @@
 import os
+import sys
 import asyncio
 import httpx
 from typing import Dict, Any, Optional
@@ -111,8 +112,20 @@ class DownloadService:
         try:
             from audible.activation_bytes import get_activation_bytes
             auth = getattr(client, "auth", None)
-            if auth:
-                fetched_bytes = get_activation_bytes(auth)
+            if auth is not None:
+                # Temporarily raise the recursion limit while fetching activation bytes.
+                # fetch_activation_sign_auth → rsa.PrivateKey.load_pkcs1 → pyasn1 triggers
+                # a ≈15-level lazy import chain that can exceed Python's default limit when
+                # running inside an asyncio event loop (uvicorn consumes extra stack frames).
+                # Restoring the original limit in the finally block is safe and zero-cost
+                # after the first call (subsequent calls hit the sys.modules cache).
+                _original_limit = sys.getrecursionlimit()
+                try:
+                    sys.setrecursionlimit(max(_original_limit, 5000))
+                    fetched_bytes = get_activation_bytes(auth)
+                finally:
+                    sys.setrecursionlimit(_original_limit)
+
                 if fetched_bytes:
                     act_str = str(fetched_bytes).strip()
                     from app.models import Setting

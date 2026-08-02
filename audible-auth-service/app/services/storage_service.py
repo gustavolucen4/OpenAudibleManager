@@ -11,27 +11,66 @@ class StorageService:
 
     @staticmethod
     def find_ffmpeg() -> Optional[str]:
-        """Finds ffmpeg executable path on Windows system or standard PATH."""
+        """
+        Finds the ffmpeg executable across all supported platforms:
+        - macOS: Homebrew (Apple Silicon & Intel), MacPorts, manual install
+        - Linux: standard PATH, Snap, Flatpak, common distro paths (ARM + x86)
+        - Windows: WinGet, Chocolatey, Scoop, manual install
+        Returns the first valid executable path found, or None.
+        """
+        # 1. Fastest path: system PATH (works on all platforms after a normal install)
         which_path = shutil.which("ffmpeg")
         if which_path:
             return which_path
 
-        search_dirs = [
-            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Packages"),
-            r"C:\ProgramData\chocolatey\bin",
-            r"C:\Users\Public\scoop\shims",
-            os.path.join(os.environ.get("USERPROFILE", ""), "scoop", "shims"),
-            r"C:\ffmpeg\bin",
+        ffmpeg_bin = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+
+        if os.name == "nt":
+            # Windows: WinGet, Chocolatey, Scoop, manual paths
+            search_dirs = [
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Packages"),
+                r"C:\ProgramData\chocolatey\bin",
+                r"C:\Users\Public\scoop\shims",
+                os.path.join(os.environ.get("USERPROFILE", ""), "scoop", "shims"),
+                r"C:\ffmpeg\bin",
+                r"C:\Program Files\ffmpeg\bin",
+                r"C:\Program Files (x86)\ffmpeg\bin",
+            ]
+            candidates = []
+            for s_dir in search_dirs:
+                if os.path.exists(s_dir):
+                    for root, _, files in os.walk(s_dir):
+                        if ffmpeg_bin in files:
+                            candidates.append(os.path.join(root, ffmpeg_bin))
+            return candidates[0] if candidates else None
+
+        # macOS and Linux: check well-known static paths
+        static_paths = [
+            # macOS — Homebrew Apple Silicon (M1/M2/M3)
+            "/opt/homebrew/bin/ffmpeg",
+            # macOS — Homebrew Intel
+            "/usr/local/bin/ffmpeg",
+            # macOS — MacPorts
+            "/opt/local/bin/ffmpeg",
+            # macOS — manual install
+            "/usr/bin/ffmpeg",
+            # Linux — standard locations
+            "/usr/bin/ffmpeg",
+            "/usr/local/bin/ffmpeg",
+            # Linux — Snap package
+            "/snap/bin/ffmpeg",
+            # Linux — Flatpak wrapper
+            "/var/lib/flatpak/exports/bin/ffmpeg",
+            # Linux — ARM (Raspberry Pi / Orange Pi / NAS)
+            "/usr/bin/ffmpeg",
+            "/usr/local/ffmpeg/bin/ffmpeg",
         ]
 
-        candidates = []
-        for s_dir in search_dirs:
-            if os.path.exists(s_dir):
-                for root, _, files in os.walk(s_dir):
-                    if "ffmpeg.exe" in files:
-                        candidates.append(os.path.join(root, "ffmpeg.exe"))
+        for path in static_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                return path
 
-        return candidates[0] if candidates else None
+        return None
 
     @staticmethod
     def sanitize_folder_name(name: str) -> str:

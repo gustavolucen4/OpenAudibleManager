@@ -9,6 +9,28 @@ from sqlalchemy.orm import Session
 # Add root directory to sys.path to guarantee robust module resolution across all environments
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# -----------------------------------------------------------------------
+# CRITICAL: Eagerly pre-load deep import chains that cause RecursionError
+# when imported lazily inside asyncio tasks (uvicorn reduces the usable
+# recursion stack depth).  Importing here — at module level, before any
+# async task runs — caches all submodules in sys.modules so subsequent
+# imports inside background tasks are instant O(1) dict lookups.
+#
+# Affected chain: audible.activation_bytes → fetch_activation_sign_auth
+#   → httpx.Client(auth=auth) → sign_request → rsa.PrivateKey.load_pkcs1
+#   → pyasn1.codec.der → cer → streaming → type.univ → ber → base → ...
+#   (≈15 nested imports, exceeds asyncio's available recursion headroom)
+# -----------------------------------------------------------------------
+try:
+    import rsa                          # noqa: F401 – RSA signing for Audible
+    import pyasn1                       # noqa: F401 – DER/BER codec used by rsa
+    import pyasn1.codec.der.decoder     # noqa: F401 – force full sub-package load
+    import pyasn1.codec.ber.decoder     # noqa: F401
+    import pyasn1.type.univ             # noqa: F401
+    import audible.activation_bytes     # noqa: F401 – activation bytes fetch
+except ImportError:
+    pass  # Optional deps – if missing, conversion will fall back gracefully
+
 from app.config import settings
 from app.database import init_db, SessionLocal, get_db
 from app.models import Book
