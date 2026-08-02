@@ -65,18 +65,18 @@ class DownloadService:
                 return None
 
             auth = getattr(client, "auth", None)
-            if not auth:
+            if auth is None:
                 print("AAXC: No auth on client")
                 return None
 
-            if not getattr(auth, "customer_info", None):
+            if getattr(auth, "customer_info", None) is None:
                 allowed_users = content_license.get("allowed_users", [])
                 if allowed_users:
                     auth.customer_info = {"user_id": allowed_users[0]}
                 else:
                     print("AAXC: customer_info missing and no allowed_users found")
 
-            if not getattr(auth, "device_info", None):
+            if getattr(auth, "device_info", None) is None:
                 auth.device_info = {
                     "device_type": "A2CZJZGLK2JJVM",
                     "device_name": "Audible for iPhone",
